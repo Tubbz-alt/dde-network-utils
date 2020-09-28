@@ -79,6 +79,7 @@ void NetworkWorker::active(bool bSync)
     m_networkModel->onConnectionListChanged(m_networkInter.connections());
     m_networkModel->onVPNEnabledChanged(m_networkInter.vpnEnabled());
     m_networkModel->onActiveConnectionsChanged(m_networkInter.activeConnections());
+    m_networkModel->WirelessAccessPointsChanged(m_networkInter.wirelessAccessPoints());
 
     queryActiveConnInfo();
 
