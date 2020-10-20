@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2011 ~ 2018 Deepin Technology Co., Ltd.
  *
@@ -31,6 +32,7 @@
 #include <QObject>
 
 #include <com_deepin_daemon_network.h>
+#include <com_deepin_daemon_airplanemode.h>
 #include <com_deepin_daemon_network_proxychains.h>
 
 namespace dde {
@@ -39,6 +41,7 @@ namespace network {
 
 using NetworkInter = com::deepin::daemon::Network;
 using ProxyChains = com::deepin::daemon::network::ProxyChains;
+using AirplaneMode = com::deepin::daemon::AirplaneMode;
 
 class NetworkWorker : public QObject
 {
@@ -49,6 +52,8 @@ public:
 
     void active(bool bSync = false);
     void deactive();
+private:
+    void initConnect();
 
 public Q_SLOTS:
     void activateConnection(const QString &devPath, const QString &uuid);
@@ -67,7 +72,7 @@ public Q_SLOTS:
     void queryProxyIgnoreHosts();
     void queryActiveConnInfo();
     void queryProxy(const QString &type);
-    void queryAccessPoints(const QString &devPath);
+    //void queryAccessPoints(const QString &devPath);
     void queryConnectionSession(const QString &devPath, const QString &uuid);
     void queryDeviceStatus(const QString &devPath);
     void remanageDevice(const QString &devPath);
@@ -88,13 +93,17 @@ private Q_SLOTS:
     void queryProxyCB(QDBusPendingCallWatcher *w);
     void queryProxyMethodCB(QDBusPendingCallWatcher *w);
     void queryProxyIgnoreHostsCB(QDBusPendingCallWatcher *w);
-    void queryAccessPointsCB(QDBusPendingCallWatcher *w);
+    //void queryAccessPointsCB(QDBusPendingCallWatcher *w);
     void queryConnectionSessionCB(QDBusPendingCallWatcher *w);
     void queryDeviceStatusCB(QDBusPendingCallWatcher *w);
     void queryActiveConnInfoCB(QDBusPendingCallWatcher *w);
 
 private:
     NetworkInter m_networkInter;
+    /**
+     * @brief m_airplaneMode   飞行模式接口
+     */
+    AirplaneMode m_airplaneMode;
     ProxyChains *m_chainsInter;
     NetworkModel *m_networkModel;
 };

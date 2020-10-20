@@ -36,6 +36,7 @@ using namespace dde::network;
 
 #define WIRELESS_PATH  "Path"
 #define WIRELESS_STRENGTH  "Strength"
+#define WIRELESS_SSID "Ssid"
 
 WirelessDevice::WirelessDevice(const QJsonObject &info, QObject *parent)
     : NetworkDevice(NetworkDevice::Wireless, info, parent)
@@ -122,60 +123,68 @@ void WirelessDevice::updateWirlessAp()
     m_networkInter.RequestWirelessScan();
 }
 
-void WirelessDevice::setAPList(const QString &apList)
+//void WirelessDevice::setAPList(const QString &apList)
+//{
+//    QMap<QString, QJsonObject> apsMapOld = m_apsMap;
+//    m_apsMap.clear();
+
+//    const QJsonArray &apArray = QJsonDocument::fromJson(apList.toUtf8()).array();
+//    for (auto item : apArray) {
+//        const QJsonObject &ap = item.toObject();
+//        const QString &path = ap.value(WIRELESS_PATH).toString();
+
+//        if (!path.isEmpty()) {
+//            if (ap.value("Ssid").toString() == activeApSsid() &&
+//                    ap.value(WIRELESS_STRENGTH).toInt() > activeApStrength()) {
+//                m_activeApInfo = ap;
+//                Q_EMIT activeApInfoChanged(m_activeApInfo);
+//            }
+
+//            if (!apsMapOld.contains(path)) {
+//                Q_EMIT apAdded(ap);
+//            } else {
+//                if (apsMapOld.value(path) != ap) {
+//                    Q_EMIT apInfoChanged(ap);
+//                }
+//            }
+//            m_apsMap.insert(path, ap);
+//        }
+//    }
+
+//    for (auto path : apsMapOld.keys()) {
+//        if (!m_apsMap.contains(path)) {
+//            Q_EMIT apRemoved(apsMapOld.value(path));
+//        }
+//    }
+
+//    setActiveApBySsid(activeApSsidByActiveConnUuid(activeWirelessConnUuid()));
+//}
+
+void WirelessDevice::initWirelessData()
 {
-    QMap<QString, QJsonObject> apsMapOld = m_apsMap;
+    qDebug() << Q_FUNC_INFO;
+//    if (!m_apsMap.isEmpty())
+
+        //初始化连接列表
     m_apsMap.clear();
-
-    const QJsonArray &apArray = QJsonDocument::fromJson(apList.toUtf8()).array();
-    for (auto item : apArray) {
-        const QJsonObject &ap = item.toObject();
-        const QString &path = ap.value(WIRELESS_PATH).toString();
-
-        if (!path.isEmpty()) {
-            if (ap.value("Ssid").toString() == activeApSsid() &&
-                    ap.value(WIRELESS_STRENGTH).toInt() > activeApStrength()) {
-                m_activeApInfo = ap;
-                Q_EMIT activeApInfoChanged(m_activeApInfo);
-            }
-
-            if (!apsMapOld.contains(path)) {
-                Q_EMIT apAdded(ap);
-            } else {
-                if (apsMapOld.value(path) != ap) {
-                    Q_EMIT apInfoChanged(ap);
-                }
-            }
-            m_apsMap.insert(path, ap);
-        }
+    for (QString Pathkey : m_ssidDatas.keys()) {
+        QString apInfo = m_ssidDatas.value(Pathkey);
+        this->updateAPInfo(apInfo);
     }
-
-    for (auto path : apsMapOld.keys()) {
-        if (!m_apsMap.contains(path)) {
-            Q_EMIT apRemoved(apsMapOld.value(path));
-        }
-    }
-
-    setActiveApBySsid(activeApSsidByActiveConnUuid(activeWirelessConnUuid()));
-}
-
-void WirelessDevice::WirelessListClear()
-{
-    m_ssidDatas.clear();
-    m_apsMap.clear();
+    //初始化活动状态
+    Q_EMIT activeConnectionsChanged(m_activeApInfo);
 }
 
 void WirelessDevice::updateAPInfo(const QString &apInfo)
 {
     const auto &ap = QJsonDocument::fromJson(apInfo.toUtf8()).object();
     const auto &path = ap.value(WIRELESS_PATH).toString();
-
     if (!path.isEmpty()) {
-        if (ap.value("Ssid").toString() == activeApSsid() &&
-                ap.value(WIRELESS_STRENGTH).toInt() > activeApStrength()) {
-            m_activeApInfo = ap;
-            Q_EMIT activeApInfoChanged(m_activeApInfo);
-        }
+//        if (ap.value("Ssid").toString() == activeApSsid() &&
+//                ap.value(WIRELESS_STRENGTH).toInt() > activeApStrength()) {
+//            m_activeApInfo = ap;
+//            Q_EMIT activeApInfoChanged(m_activeApInfo);
+//        }
 
         if (m_apsMap.contains(path)) {
             Q_EMIT apInfoChanged(ap);
@@ -203,24 +212,31 @@ void WirelessDevice::deleteAP(const QString &apInfo)
 void WirelessDevice::setActiveConnections(const QList<QJsonObject> &activeConns)
 {
     m_activeConnections = activeConns;
-
-    Q_EMIT activeConnectionsChanged(m_activeConnections);
-}
-
-void WirelessDevice::setActiveConnectionsInfo(const QList<QJsonObject> &activeConnsInfo)
-{
-    m_activeConnectionsInfo = activeConnsInfo;
-
-    if (activeWirelessConnectionInfo().isEmpty()) {
-        m_activeApInfo = QJsonObject();
-        Q_EMIT activeApInfoChanged(m_activeApInfo);
-    } else {
-        setActiveApBySsid(activeApSsidByActiveConnUuid(activeWirelessConnUuid()));
+    //这里数据简单处理一下，里面的值在单网卡的情况下，只有一个，所以不会对内存产生负担
+    for (auto activeConn: activeConns) {
+        //初始化的时候会使用到的参数。会去尝试获取当前的状态
+        m_activeApInfo = activeConn;
+        Q_EMIT activeConnectionsChanged(activeConn);
     }
-
-    Q_EMIT activeWirelessConnectionInfoChanged(activeWirelessConnectionInfo());
-    Q_EMIT activeConnectionsInfoChanged(m_activeConnectionsInfo);
+    if (activeConns.isEmpty())
+        m_activeApInfo = QJsonObject();
 }
+
+//void WirelessDevice::setActiveConnectionsInfo(const QList<QJsonObject> &activeConnsInfo)
+//{
+//    qDebug() << Q_FUNC_INFO;
+//    m_activeConnectionsInfo = activeConnsInfo;
+
+//    if (activeWirelessConnectionInfo().isEmpty()) {
+//        m_activeApInfo = QJsonObject();
+//        Q_EMIT activeApInfoChanged(m_activeApInfo);
+//    } else {
+//        setActiveApBySsid(activeApSsidByActiveConnUuid(activeWirelessConnUuid()));
+//    }
+
+//    Q_EMIT activeWirelessConnectionInfoChanged(activeWirelessConnectionInfo());
+//    Q_EMIT activeConnectionsInfoChanged(m_activeConnectionsInfo);
+//}
 
 void WirelessDevice::setActiveHotspotInfo(const QJsonObject &hotspotInfo)
 {
@@ -232,34 +248,32 @@ void WirelessDevice::setActiveHotspotInfo(const QJsonObject &hotspotInfo)
         Q_EMIT hotspotEnabledChanged(hotspotEnabled());
 }
 
-void WirelessDevice::setActiveApBySsid(const QString &ssid)
-{
-    if (m_apsMap.size() > 0) {
-        // get the use same ssid Aps
-        QList<QJsonObject> sameSsidAps;
-        for (const auto &ap : m_apsMap.values()) {
-            if (ap.value("Ssid").toString() == ssid) {
-                sameSsidAps.append(ap);
-            }
-        }
+//void WirelessDevice::setActiveApBySsid(const QString &ssid)
+//{
+//    if (m_apsMap.size() > 0) {
+//        // get the use same ssid Aps
+//        QList<QJsonObject> sameSsidAps;
+//        for (const auto &ap : m_apsMap.values()) {
+//            if (ap.value("Ssid").toString() == ssid) {
+//                sameSsidAps.append(ap);
+//            }
+//        }
 
-        // set active Ap by strength
-        if (sameSsidAps.size() > 0) {
-            for (const auto &ap : sameSsidAps) {
-                if (activeApStrength() < ap.value("Strength").toInt()) {
-                    m_activeApInfo = ap;
-                }
-            }
-            Q_EMIT activeApInfoChanged(m_activeApInfo);
-        }
-    }
-}
+//        // set active Ap by strength
+//        if (sameSsidAps.size() > 0) {
+//            for (const auto &ap : sameSsidAps) {
+//                if (activeApStrength() < ap.value("Strength").toInt()) {
+//                    m_activeApInfo = ap;
+//                }
+//            }
+//            Q_EMIT activeApInfoChanged(m_activeApInfo);
+//        }
+//    }
+//}
 
 void WirelessDevice::setConnections(const QList<QJsonObject> &connections)
 {
     m_connections = connections;
-
-    Q_EMIT connectionsChanged(m_connections);
 }
 
 void WirelessDevice::setHotspotConnections(const QList<QJsonObject> &hotspotConnections)
@@ -295,7 +309,8 @@ void WirelessDevice::WirelessUpdate(const QJsonValue &WirelessList)
         QJsonObject apInfo = data.toObject();
         //当不存在两个Key的时候,则进行下一个循环
         if (!apInfo.contains(WIRELESS_PATH) && !apInfo.contains(WIRELESS_STRENGTH)) continue;
-
+        //当名字为空，则排除掉
+        if (apInfo.value(WIRELESS_SSID).toString().isEmpty()) continue;
         QString Path = apInfo.value(WIRELESS_PATH).toString();
         //修改了的会直接更新,没有的会直接插入
         PathDatas.insert(Path,apInfo);  

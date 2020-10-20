@@ -32,6 +32,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QDBusObjectPath>
 
 using namespace dde::network;
 
@@ -49,15 +50,6 @@ NetworkDevice::DeviceType parseDeviceType(const QString &type)
     }
 
     return NetworkDevice::None;
-}
-
-void NetworkModel::WirelessListClear()
-{
-    for (auto dev:m_devices)
-    {
-         if (dev->type() == NetworkDevice::Wireless)
-              dynamic_cast<WirelessDevice *>(dev) ->WirelessListClear();
-    }
 }
 
 NetworkModel::NetworkModel(QObject *parent)
@@ -84,9 +76,9 @@ const QString NetworkModel::connectionUuidByPath(const QString &connPath) const
     return connectionByPath(connPath).value("Uuid").toString();
 }
 
-const QString NetworkModel::connectionNameByPath(const QString &connPath) const
+const QString NetworkModel::connectionNameByUuid(const QString &connUuid) const
 {
-    return connectionByPath(connPath).value("Id").toString();
+    return connectionByUuid(connUuid).value("Id").toString();
 }
 
 const QJsonObject NetworkModel::connectionByPath(const QString &connPath) const
@@ -162,7 +154,7 @@ void NetworkModel::onActivateAccessPointDone(const QString &devPath, const QStri
     {
         if (dev->type() != NetworkDevice::Wireless || dev->path() != devPath)
             continue;
-
+        //当wifi是企业wifi的时候，这个才能进去，这个时候前端会去做判断。打开详情页
         if (path.path().isEmpty()) {
             Q_EMIT static_cast<WirelessDevice *>(dev)->activateAccessPointFailed(apPath, uuid);
             return;
@@ -264,6 +256,8 @@ void NetworkModel::onDevicesChanged(const QString &devices)
                 // init device enabled status
                 Q_EMIT requestDeviceStatus(d->path());
             } else {
+                //这里由于Devices属性中的数据目前的状态会不更新，所以导致了状态可能出现不正确的情况，
+                //所以这里将updateDeviceInfo中的设置操作给关闭了，如果后期后端将数据同步正确可以打开
                 d->updateDeviceInfo(info);
             }
         }
@@ -290,6 +284,23 @@ void NetworkModel::onDevicesChanged(const QString &devices)
 
     if (changed) {
         Q_EMIT deviceListChanged(m_devices);
+    }
+}
+
+void NetworkModel::onAirplaneModeEnableChanged(const bool enabled)
+{
+    qDebug() << Q_FUNC_INFO;
+    for (NetworkDevice *dev : m_devices) {
+        if (!dev)
+            continue;
+        if (dev->type() != NetworkDevice::Wireless)
+            continue;
+        if (enabled)
+            //由于飞行模式会将底层的无线网适配器进行禁用，所以在wifi适配器打开的时候进行初始化，可以关闭打开飞行模式没有数据的情况
+            (static_cast<WirelessDevice *>(dev))->initWirelessData();
+       else
+            Q_EMIT requestDeviceEnable(dev->path(), enabled);
+
     }
 }
 
@@ -351,6 +362,7 @@ void NetworkModel::onConnectionListChanged(const QString &conns)
             destConns += commonConnections.value("wireless");
             destConns += connsByType.value("wireless");
             WirelessDevice *wsDevice = static_cast<WirelessDevice *>(dev);
+            qDebug() << "destConns" << destConns;
             wsDevice->setConnections(destConns);
 
             destConns.clear();
@@ -389,89 +401,64 @@ void NetworkModel::onActiveConnInfoChanged(const QString &conns)
             activeHotspotInfo.insert(devPath, connInfo);
         }
     }
-
-    // update device active connection
-    for (auto *dev : m_devices)
-    {
-        const auto &devPath = dev->path();
-
-        switch (dev->type())
-        {
-        case NetworkDevice::Wired:
-        {
-            WiredDevice *d = static_cast<WiredDevice *>(dev);
-            d->setActiveConnectionsInfo(activeConnInfo.values(devPath));
-            break;
-        }
-        case NetworkDevice::Wireless:
-        {
-            WirelessDevice *d = static_cast<WirelessDevice *>(dev);
-            d->setActiveConnectionsInfo(activeConnInfo.values(devPath));
-            d->setActiveHotspotInfo(activeHotspotInfo.value(devPath));
-            break;
-        }
-        default:;
-        }
-    }
-
     Q_EMIT activeConnInfoChanged(m_activeConnInfos);
 }
 
-void NetworkModel::onActiveConnectionsChanged(const QString &conns)
-{
-    m_activeConns.clear();
+//void NetworkModel::onActiveConnectionsChanged(const QString &conns)
+//{
 
-    // 按照设备分类所有 active 连接
-    QMap<QString, QList<QJsonObject>> deviceActiveConnsMap;
+//    m_activeConns.clear();
 
-    const QJsonObject activeConns = QJsonDocument::fromJson(conns.toUtf8()).object();
-    for (auto it(activeConns.constBegin()); it != activeConns.constEnd(); ++it)
-    {
-        const QJsonObject &info = it.value().toObject();
-        if (info.isEmpty())
-            continue;
+//    QMap<QString, QList<QJsonObject>> deviceActiveConnsMap;
+//    const QJsonObject activeConns = QJsonDocument::fromJson(conns.toUtf8()).object();
+//    for (auto it = activeConns.constBegin(); it != activeConns.constEnd(); ++it)
+//    {
+//        const QJsonObject &info = it.value().toObject();
+//        if (info.isEmpty())
+//            continue;
 
-        m_activeConns << info;
-        int connectionState = info.value("State").toInt();
+//        m_activeConns << info;
+//        //状态值
+//        int connectionState = info.value("State").toInt();
 
-        for (const auto &item : info.value("Devices").toArray()) {
-            const QString &devicePath = item.toString();
-            if (devicePath.isEmpty()) {
-                continue;
-            }
-            deviceActiveConnsMap[devicePath] << info;
+//        for (const auto &item : info.value("Devices").toArray()) {
+//            const QString &devicePath = item.toString();
+//            if (devicePath.isEmpty()) {
+//                continue;
+//            }
+//            deviceActiveConnsMap[devicePath] << info;
 
-            NetworkDevice *dev = device(devicePath);
-            if (dev != nullptr) {
-                if (dev->status() != NetworkDevice::DeviceStatus::Activated && connectionState == CONNECTED) {
-                    qDebug() << devicePath << "The active connection status does not match the device connection status. It has been changed";
-                    dev->setDeviceStatus(NetworkDevice::DeviceStatus::Activated);
-                }
-            }
-        }
-    }
-    // 将 active 连接分配给具体的设备
-    for (auto it(deviceActiveConnsMap.constBegin()); it != deviceActiveConnsMap.constEnd(); ++it) {
-        NetworkDevice *dev = device(it.key());
-        if (dev == nullptr) {
-            continue;
-        }
-        switch (dev->type()) {
-            case NetworkDevice::Wired: {
-                WiredDevice *wdDevice = static_cast<WiredDevice *>(dev);
-                wdDevice->setActiveConnections(it.value());
-                break;
-            }
-            case NetworkDevice::Wireless: {
-                WirelessDevice *wsDevice = static_cast<WirelessDevice *>(dev);
-                wsDevice->setActiveConnections(it.value());
-                break;
-            }
-            default:
-                break;
-        }
-    }
-}
+//            NetworkDevice *dev = device(devicePath);
+//            if (dev != nullptr) {
+//                if (dev->status() != NetworkDevice::DeviceStatus::Activated && connectionState == CONNECTED) {
+//                    qDebug() << devicePath << "The active connection status does not match the device connection status. It has been changed";
+//                    dev->setDeviceStatus(NetworkDevice::DeviceStatus::Activated);
+//                }
+//            }
+//        }
+//    }
+//    // 将 active 连接分配给具体的设备
+//    for (auto it(deviceActiveConnsMap.constBegin()); it != deviceActiveConnsMap.constEnd(); ++it) {
+//        NetworkDevice *dev = device(it.key());
+//        if (dev == nullptr) {
+//            continue;
+//        }
+//        switch (dev->type()) {
+//            case NetworkDevice::Wired: {
+//                WiredDevice *wdDevice = static_cast<WiredDevice *>(dev);
+//                wdDevice->setActiveConnections(it.value());
+//                break;
+//            }
+//            case NetworkDevice::Wireless: {
+//                WirelessDevice *wsDevice = static_cast<WirelessDevice *>(dev);
+//                wsDevice->setActiveConnections(it.value());
+//                break;
+//            }
+//            default:
+//                break;
+//        }
+//    }
+//}
 
 void NetworkModel::onConnectionSessionCreated(const QString &device, const QString &sessionPath)
 {
@@ -486,18 +473,19 @@ void NetworkModel::onConnectionSessionCreated(const QString &device, const QStri
     Q_EMIT unhandledConnectionSessionCreated(device, sessionPath);
 }
 
-void NetworkModel::onDeviceAPListChanged(const QString &device, const QString &apList)
-{
-    for (auto const dev : m_devices)
-    {
-        if (dev->type() != NetworkDevice::Wireless || dev->path() != device)
-            continue;
-        return static_cast<WirelessDevice *>(dev)->setAPList(apList);
-    }
-}
+//void NetworkModel::onDeviceAPListChanged(const QString &device, const QString &apList)
+//{
+//    for (auto const dev : m_devices)
+//    {
+//        if (dev->type() != NetworkDevice::Wireless || dev->path() != device)
+//            continue;
+//        return static_cast<WirelessDevice *>(dev)->setAPList(apList);
+//    }
+//}
 
 void NetworkModel::onDeviceEnableChanged(const QString &device, const bool enabled)
 {
+    qDebug() << Q_FUNC_INFO;
     NetworkDevice *dev = nullptr;
     for (auto const d : m_devices)
     {
@@ -587,6 +575,16 @@ void NetworkModel::onAppProxyExistChanged(bool appProxyExist)
     Q_EMIT appProxyExistChanged(appProxyExist);
 }
 
+void NetworkModel::onDeviceEnable(const QString &path, bool enabled) const
+{
+    qDebug() << Q_FUNC_INFO << enabled;
+    //发送前端需要切换状态的信号
+    Q_EMIT requestDeviceEnable(path, enabled);
+    if (enabled)
+        Q_EMIT updateApList();
+
+}
+
 void NetworkModel::WirelessAccessPointsChanged(const QString &WirelessList)
 {
     //当数据非json的时候,则这个里面的项为0,则下面的for不会被执行
@@ -597,5 +595,130 @@ void NetworkModel::WirelessAccessPointsChanged(const QString &WirelessList)
             if (dev->type() != NetworkDevice::Wireless || dev->path() != Device) continue;
             return dynamic_cast<WirelessDevice *>(dev)->WirelessUpdate(WirelessData.value(Device));
         }
+    }
+}
+
+void NetworkModel::onWiredDataChange(const QString &conns)
+{
+    QMap< QString, QList< QJsonObject>> commonConnections;
+    QMap< QString, QMap< QString, QList< QJsonObject>>> deviceConnections;
+
+    // 解析所有的 connection
+    const QJsonObject connsObject = QJsonDocument::fromJson(conns.toUtf8()).object();
+    for (auto it(connsObject.constBegin()); it != connsObject.constEnd(); ++it) {
+        const auto &connList = it.value().toArray();
+        const auto &connType = it.key();
+        //由于无线网数据改用WirelessAccessPoints属性中获取数据，所以这里不再保存无线网的值
+        if (connType.isEmpty() || connType == "wireless")
+            continue;
+
+        m_connections[connType].clear();
+
+        for (const auto &connObject : connList) {
+            const QJsonObject &connection = connObject.toObject();
+            //向相应的添加相应的内容
+            m_connections[connType].append(connection);
+
+            const auto &hwAddr = connection.value("HwAddress").toString();
+            if (hwAddr.isEmpty()) {
+                commonConnections[connType].append(connection);
+            } else {
+                deviceConnections[hwAddr][connType].append(connection);
+            }
+        }
+    }
+
+    // 将 connections 分配给具体的设备
+    for (NetworkDevice *dev : m_devices) {
+        const QString &hwAddr = dev->realHwAdr();
+        const QMap<QString, QList<QJsonObject>> &connsByType = deviceConnections.value(hwAddr);
+        QList<QJsonObject> destConns;
+
+        if (dev->type() == NetworkDevice::Wired) {
+            destConns += commonConnections.value("wired");
+            destConns += connsByType.value("wired");
+            WiredDevice *wdDevice = static_cast<WiredDevice *>(dev);
+            qDebug() << "destConns: " << destConns;
+            wdDevice->setConnections(destConns);
+        }
+
+    }
+}
+
+void NetworkModel::onActiveConnections(const QString &conns)
+{
+    m_activeConns.clear();
+    // 按照设备分类所有 active 连接
+    QMap<QString, QList<QJsonObject>> deviceActiveConnsMap;
+
+    const QJsonObject activeConns = QJsonDocument::fromJson(conns.toUtf8()).object();
+    for (auto it = activeConns.constBegin(); it != activeConns.constEnd(); ++it)
+    {
+        const QJsonObject &info = it.value().toObject();
+        //数据为空
+        if (info.isEmpty()) continue;
+        //添加到活动的列表中
+        m_activeConns << info;
+        //状态值
+        int connectionState = info.value("State").toInt();
+
+        for (const auto &item : info.value("Devices").toArray()) {
+            const QString &devicePath = item.toString();
+            if (devicePath.isEmpty()) {
+                continue;
+            }
+            deviceActiveConnsMap[devicePath] << info;
+
+            NetworkDevice *dev = device(devicePath);
+            if (dev != nullptr) {
+                //这个后端状态给的不对问题，这一段后端说直接从networkmanage中拿得，没办法改，所以让前端规避
+                if (dev->status() != NetworkDevice::DeviceStatus::Activated && connectionState == CONNECTED) {
+                    qDebug() << devicePath << "The active connection status does not match the device connection status. It has been changed";
+                    dev->setDeviceStatus(NetworkDevice::DeviceStatus::Activated);
+                }
+            }
+        }
+    }
+    // 将 active 连接分配给具体的设备
+    for (auto it = deviceActiveConnsMap.constBegin(); it != deviceActiveConnsMap.constEnd(); ++it) {
+        NetworkDevice *dev = device(it.key());
+        if (dev == nullptr) {
+            continue;
+        }
+        switch (dev->type()) {
+            case NetworkDevice::Wired: {
+                WiredDevice *wdDevice = static_cast<WiredDevice *>(dev);
+                wdDevice->setActiveConnections(it.value());                  
+                break;
+            }
+            case NetworkDevice::Wireless: {
+                WirelessDevice *wsDevice = static_cast<WirelessDevice *>(dev);
+                wsDevice->setActiveConnections(it.value());
+                break;
+            }
+            default:
+                break;
+        }
+    }
+    //当网卡处于断开连接状态的时候，active接口中并没有相应的数据，所以需要发送空给相应的适配器
+    for (NetworkDevice *device : m_devices) {
+        if (deviceActiveConnsMap.contains(device->path())) {
+            continue;
+        }
+        switch (device->type()) {
+            case NetworkDevice::Wired: {
+                WiredDevice *wdDevice = static_cast<WiredDevice *>(device);
+                wdDevice->setActiveConnections(QList<QJsonObject>());
+                break;
+            }
+            case NetworkDevice::Wireless: {
+                WirelessDevice *wsDevice = static_cast<WirelessDevice *>(device);
+                wsDevice->setActiveConnections(QList<QJsonObject>());
+                break;
+            }
+            default:
+                break;
+        }
+
     }
 }

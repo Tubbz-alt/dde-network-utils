@@ -74,7 +74,8 @@ void NetworkDevice::setDeviceStatus(const int status)
 
         Q_EMIT statusChanged(m_status);
         Q_EMIT statusChanged(statusString());
-        Q_EMIT statusQueueChanged(m_statusQueue);
+        //这个接口没人使用
+        //Q_EMIT statusQueueChanged(m_statusQueue);
     }
 }
 
@@ -90,6 +91,7 @@ void NetworkDevice::enqueueStatus(NetworkDevice::DeviceStatus status)
 
 const QString NetworkDevice::statusString() const
 {
+    qDebug() << Q_FUNC_INFO << m_status;
     switch (m_status)
     {
     case Unmanaged:
@@ -199,6 +201,5 @@ const QString NetworkDevice::usingHwAdr() const
 void NetworkDevice::updateDeviceInfo(const QJsonObject &devInfo)
 {
     m_deviceInfo = devInfo;
-
     setDeviceStatus(m_deviceInfo.value("State").toInt());
 }

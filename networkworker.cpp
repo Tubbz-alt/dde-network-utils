@@ -33,64 +33,102 @@ NetworkWorker::NetworkWorker(NetworkModel *model, QObject *parent, bool sync)
     : QObject(parent),
       m_networkInter("com.deepin.daemon.Network", "/com/deepin/daemon/Network", QDBusConnection::sessionBus(), this),
       m_chainsInter(new ProxyChains("com.deepin.daemon.Network", "/com/deepin/daemon/Network/ProxyChains", QDBusConnection::sessionBus(), this)),
+      m_airplaneMode("com.deepin.daemon.AirplaneMode", "/com/deepin/daemon/AirplaneMode", QDBusConnection::systemBus(), this),
       m_networkModel(model)
 {
-    //对网络适配器的监听，当适配器消失及时响应
-    connect(&m_networkInter, &NetworkInter::ActiveConnectionsChanged, this, &NetworkWorker::queryActiveConnInfo, Qt::QueuedConnection);
-    connect(&m_networkInter, &NetworkInter::ActiveConnectionsChanged, m_networkModel, &NetworkModel::onActiveConnectionsChanged);
-    connect(&m_networkInter, &NetworkInter::DevicesChanged, m_networkModel, &NetworkModel::onDevicesChanged);
+//    //对网络适配器的监听，当适配器消失及时响应
+//    connect(&m_networkInter, &NetworkInter::ActiveConnectionsChanged, this, &NetworkWorker::queryActiveConnInfo, Qt::QueuedConnection);
+//    connect(&m_networkInter, &NetworkInter::ActiveConnectionsChanged, m_networkModel, &NetworkModel::onActiveConnectionsChanged);
+//    connect(&m_networkInter, &NetworkInter::DevicesChanged, m_networkModel, &NetworkModel::onDevicesChanged);
     
-    connect(&m_networkInter, &NetworkInter::ConnectionsChanged, m_networkModel, &NetworkModel::onConnectionListChanged);
+//    connect(&m_networkInter, &NetworkInter::ConnectionsChanged, m_networkModel, &NetworkModel::onConnectionListChanged);
+//    connect(&m_networkInter, &NetworkInter::DeviceEnabled, m_networkModel, &NetworkModel::onDeviceEnableChanged);
+//    connect(&m_networkInter, &NetworkInter::WirelessAccessPointsChanged, m_networkModel, &NetworkModel::WirelessAccessPointsChanged);
+//    connect(&m_networkInter, &NetworkInter::VpnEnabledChanged, m_networkModel, &NetworkModel::onVPNEnabledChanged);
+//    connect(m_networkModel, &NetworkModel::requestDeviceStatus, this, &NetworkWorker::queryDeviceStatus, Qt::QueuedConnection);
+//    connect(m_networkModel, &NetworkModel::deviceListChanged, this, [=]() {
+//        m_networkModel->onConnectionListChanged(m_networkInter.connections());
+//    }, Qt::QueuedConnection);
+
+//    connect(m_chainsInter, &ProxyChains::IPChanged, model, &NetworkModel::onChainsAddrChanged);
+//    connect(m_chainsInter, &ProxyChains::PasswordChanged, model, &NetworkModel::onChainsPasswdChanged);
+//    connect(m_chainsInter, &ProxyChains::TypeChanged, model, &NetworkModel::onChainsTypeChanged);
+//    connect(m_chainsInter, &ProxyChains::UserChanged, model, &NetworkModel::onChainsUserChanged);
+//    connect(m_chainsInter, &ProxyChains::PortChanged, model, &NetworkModel::onChainsPortChanged);
+
+//    m_networkInter.setSync(false);
+//    m_chainsInter->setSync(false);
+
+//    active(sync);
+    //关联信号和槽
+    initConnect();
+    //初始化网络操作
+    active();
+
+
+}
+void NetworkWorker::initConnect()
+{
+    //监听适配器开关
     connect(&m_networkInter, &NetworkInter::DeviceEnabled, m_networkModel, &NetworkModel::onDeviceEnableChanged);
+    connect(&m_networkInter, &NetworkInter::VpnEnabledChanged, m_networkModel, &NetworkModel::vpnEnabledChanged);
+    connect(&m_airplaneMode, &AirplaneMode::WifiEnabledChanged, m_networkModel, &NetworkModel::onAirplaneModeEnableChanged);
+    //适配器状态改变
+    connect(&m_networkInter, &NetworkInter::DevicesChanged, m_networkModel, &NetworkModel::onDevicesChanged);
+    //活动状态同步
+    connect(&m_networkInter, &NetworkInter::ActiveConnectionsChanged, m_networkModel, &NetworkModel::onActiveConnections);
+    //处理有线连接数据
+    connect(&m_networkInter, &NetworkInter::ConnectionsChanged, m_networkModel, &NetworkModel::onWiredDataChange);
+    //处理无线连接的数据
     connect(&m_networkInter, &NetworkInter::WirelessAccessPointsChanged, m_networkModel, &NetworkModel::WirelessAccessPointsChanged);
-    connect(&m_networkInter, &NetworkInter::VpnEnabledChanged, m_networkModel, &NetworkModel::onVPNEnabledChanged);
-    connect(m_networkModel, &NetworkModel::requestDeviceStatus, this, &NetworkWorker::queryDeviceStatus, Qt::QueuedConnection);
-    connect(m_networkModel, &NetworkModel::deviceListChanged, this, [=]() {
-        m_networkModel->onConnectionListChanged(m_networkInter.connections());
-    }, Qt::QueuedConnection);
+    //刷新网络
+    connect(m_networkModel, &NetworkModel::updateApList, this, &NetworkWorker::requestWirelessScan);
+    //适配器状态前端请求改变
+    connect(m_networkModel, &NetworkModel::requestDeviceEnable, this, &NetworkWorker::setDeviceEnable);
+    //前端请求断开连接wifi
+    connect(m_networkModel, &NetworkModel::requestDisconnectAp, this, &NetworkWorker::disconnectDevice);
+    //前端请求连接wifi
+    connect(m_networkModel, &NetworkModel::requestConnectAp, this, &NetworkWorker::activateAccessPoint);
+    //前端请求删除ap保存数据
+    connect(m_networkModel, &NetworkModel::deleteConnection, this, &NetworkWorker::deleteConnection);
 
-    connect(m_chainsInter, &ProxyChains::IPChanged, model, &NetworkModel::onChainsAddrChanged);
-    connect(m_chainsInter, &ProxyChains::PasswordChanged, model, &NetworkModel::onChainsPasswdChanged);
-    connect(m_chainsInter, &ProxyChains::TypeChanged, model, &NetworkModel::onChainsTypeChanged);
-    connect(m_chainsInter, &ProxyChains::UserChanged, model, &NetworkModel::onChainsUserChanged);
-    connect(m_chainsInter, &ProxyChains::PortChanged, model, &NetworkModel::onChainsPortChanged);
-
-    m_networkInter.setSync(false);
-    m_chainsInter->setSync(false);
-
-    active(sync);
+    //当前连接状态详细数据
+    connect(m_networkModel, &NetworkModel::requestActionConnect, this, &NetworkWorker::queryActiveConnInfo);
 }
 
 void NetworkWorker::active(bool bSync)
 {
     m_networkInter.blockSignals(false);
 
-    //如果需要立即显示网络模块，则需要在active中使用同步方式获取网络设备数据
-    if (bSync) {
-        QVariant req = m_networkInter.property("Devices");
-#ifdef QT_DEBUG
-        qDebug() << "devices req :" << req;
-#endif
-        m_networkModel->onDevicesChanged(req.toString());
-        qDebug() << Q_FUNC_INFO << "network active ,get devices size :" << m_networkModel->devices().size();
-    } else {
-        m_networkModel->onDevicesChanged(m_networkInter.devices());
-    }
-    m_networkModel->onConnectionListChanged(m_networkInter.connections());
-    m_networkModel->onVPNEnabledChanged(m_networkInter.vpnEnabled());
-    m_networkModel->onActiveConnectionsChanged(m_networkInter.activeConnections());
+    //这个操作会去创建有线和无线的device，这个时候会给一个网络状态给前端，
+    //这个状态目前看来是不准确的，所以需要再次对状态进行更新
+    m_networkModel->onDevicesChanged(m_networkInter.devices());
+    //初始化有线数据
+    m_networkModel->onWiredDataChange(m_networkInter.connections());
+    //m_networkModel->onConnectionListChanged(m_networkInter.connections());
+    //初始化无线数据
     m_networkModel->WirelessAccessPointsChanged(m_networkInter.wirelessAccessPoints());
+    //初始化飞行模式和后端开关
+    m_networkModel->onAirplaneModeEnableChanged(m_airplaneMode.wifiEnabled());
+    //初始化vpn是否打开
+    m_networkModel->onVPNEnabledChanged(m_networkInter.vpnEnabled());
 
-    queryActiveConnInfo();
+    //更新连接状态
+    m_networkModel->onActiveConnections(m_networkInter.activeConnections());
+    //初始化连接状态状态
+   // m_networkModel->initActiveConnections(m_networkInter.activeConnections());
+//    m_networkModel->onActiveConnections(m_networkInter.activeConnections());
 
-    for (auto device : m_networkModel->devices()) {
-        if (device->type() == NetworkDevice::Wireless) {
-            queryAccessPoints(device->path());
-        }
-    }
+    //queryActiveConnInfo();
 
-    const bool isAppProxyVaild = QProcess::execute("which", QStringList() << "/usr/bin/proxychains4") == 0;
-    m_networkModel->onAppProxyExistChanged(isAppProxyVaild);
+//    for (auto device : m_networkModel->devices()) {
+//        if (device->type() == NetworkDevice::Wireless) {
+//            queryAccessPoints(device->path());
+//        }
+//    }
+
+//    const bool isAppProxyVaild = QProcess::execute("which", QStringList() << "/usr/bin/proxychains4") == 0;
+//    m_networkModel->onAppProxyExistChanged(isAppProxyVaild);
 }
 
 void NetworkWorker::deactive()
@@ -176,8 +214,7 @@ void NetworkWorker::queryProxy(const QString &type)
 
 void NetworkWorker::requestWirelessScan()
 {
-    //让程序一打开可以正常获取到wifi列表，防止出现列表为空的情况
-    m_networkModel->WirelessAccessPointsChanged(m_networkInter.wirelessAccessPoints());
+    qDebug() << Q_FUNC_INFO;
     m_networkInter.RequestWirelessScan();
 }
 
@@ -229,14 +266,14 @@ void NetworkWorker::queryActiveConnInfo()
     connect(w, &QDBusPendingCallWatcher::finished, this, &NetworkWorker::queryActiveConnInfoCB);
 }
 
-void NetworkWorker::queryAccessPoints(const QString &devPath)
-{
-    QDBusPendingCallWatcher *w = new QDBusPendingCallWatcher(m_networkInter.GetAccessPoints(QDBusObjectPath(devPath)));
+//void NetworkWorker::queryAccessPoints(const QString &devPath)
+//{
+//    QDBusPendingCallWatcher *w = new QDBusPendingCallWatcher(m_networkInter.GetAccessPoints(QDBusObjectPath(devPath)));
+//    qDebug() << QDBusObjectPath(devPath);
+//    w->setProperty("devPath", devPath);
 
-    w->setProperty("devPath", devPath);
-
-    connect(w, &QDBusPendingCallWatcher::finished, this, &NetworkWorker::queryAccessPointsCB);
-}
+//    connect(w, &QDBusPendingCallWatcher::finished, this, &NetworkWorker::queryAccessPointsCB);
+//}
 
 void NetworkWorker::queryConnectionSession(const QString &devPath, const QString &uuid)
 {
@@ -318,7 +355,6 @@ void NetworkWorker::activateAccessPoint(const QString &devPath, const QString &a
 void NetworkWorker::activateAccessPointCB(QDBusPendingCallWatcher *w)
 {
     QDBusPendingReply<QDBusObjectPath> reply = *w;
-
     m_networkModel->onActivateAccessPointDone(w->property("devPath").toString(),
             w->property("apPath").toString(), w->property("uuid").toString(), reply.value());
 
@@ -365,14 +401,14 @@ void NetworkWorker::queryProxyIgnoreHostsCB(QDBusPendingCallWatcher *w)
     w->deleteLater();
 }
 
-void NetworkWorker::queryAccessPointsCB(QDBusPendingCallWatcher *w)
-{
-    QDBusPendingReply<QString> reply = *w;
+//void NetworkWorker::queryAccessPointsCB(QDBusPendingCallWatcher *w)
+//{
+//    QDBusPendingReply<QString> reply = *w;
 
-    m_networkModel->onDeviceAPListChanged(w->property("devPath").toString(), reply.value());
+//    m_networkModel->onDeviceAPListChanged(w->property("devPath").toString(), reply.value());
 
-    w->deleteLater();
-}
+//    w->deleteLater();
+//}
 
 void NetworkWorker::queryConnectionSessionCB(QDBusPendingCallWatcher *w)
 {

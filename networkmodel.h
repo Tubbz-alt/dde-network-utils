@@ -54,7 +54,7 @@ enum Connectivity
     Portal = 2,
     Limited = 3,
     Full = 4
-};
+}; 
 
 class NetworkDevice;
 class NetworkWorker;
@@ -73,8 +73,6 @@ public:
     bool vpnEnabled() const { return m_vpnEnabled; }
     bool appProxyExist() const { return m_appProxyExist; }
 
-    void WirelessListClear();
-
     static Connectivity connectivity() { return m_Connectivity; }
 
     const ProxyConfig proxy(const QString &type) const { return m_proxies[type]; }
@@ -90,8 +88,9 @@ public:
     const QList<QJsonObject> activeConnInfos() const { return m_activeConnInfos; }
     const QList<QJsonObject> activeConns() const { return m_activeConns; }
     const QString connectionUuidByPath(const QString &connPath) const;
-    const QString connectionNameByPath(const QString &connPath) const;
+    const QString connectionNameByUuid(const QString &connUuid) const;
     const QString connectionUuidByApInfo(const QJsonObject &apInfo) const;
+    //没有用的接口
     const QString activeConnUuidByInfo(const QString &devPath, const QString &id) const;
     const QJsonObject connectionByUuid(const QString &uuid) const;
     const QJsonObject connectionByPath(const QString &connPath) const;
@@ -135,10 +134,22 @@ private Q_SLOTS:
     void onDevicesChanged(const QString &devices);
     void onConnectionListChanged(const QString &conns);
     void onActiveConnInfoChanged(const QString &conns);
-    void onActiveConnectionsChanged(const QString &conns);
+    //void onActiveConnectionsChanged(const QString &conns);
     void onConnectionSessionCreated(const QString &device, const QString &sessionPath);
-    void onDeviceAPListChanged(const QString &device, const QString &apList);
+    //void onDeviceAPListChanged(const QString &device, const QString &apList);
+    /**
+     * @def onDeviceEnableChanged
+     * @brief 开关wifi信号处理
+     * @param device
+     * @param enabled
+     */
     void onDeviceEnableChanged(const QString &device, const bool enabled);
+    /**
+     * @def onAirplaneModeEnableChanged
+     * @brief 开关飞行模式，对当前wifi进行操作
+     * @param enabled
+     */
+    void onAirplaneModeEnableChanged(const bool enabled);
     void onChainsTypeChanged(const QString &type);
     void onChainsAddrChanged(const QString &addr);
     void onChainsPortChanged(const uint port);
@@ -151,6 +162,12 @@ private Q_SLOTS:
      * @param WirelessList
      */
     void WirelessAccessPointsChanged(const QString &WirelessList);
+    /**
+     * @def onWiredDataChange
+     * @brief 只从接口中处理有线数据有线网数据
+     * @param conns
+     */
+    void onWiredDataChange(const QString &conns);
 private:
     bool containsDevice(const QString &devPath) const;
     NetworkDevice *device(const QString &devPath) const;
@@ -175,6 +192,58 @@ private:
     QMap<QString, QList<QJsonObject>> m_connections;
 
     static Connectivity m_Connectivity;
+
+Q_SIGNALS:
+    /**
+     * @brief requestDeviceEnable
+     * @param path
+     * @param enabled
+     * @remark 从前端来的将适配器开关的信号
+     */
+    void requestDeviceEnable(const QString &path, bool enabled) const;
+    /**
+     * @brief requestActionConnect
+     * @remark 前端请求网络连接详情数据
+     */
+    void requestActionConnect();
+    /**
+     * @brief updateApList
+     * @remark 刷新wifi列表信号
+     */
+    void updateApList() const;
+    /**
+     * @def requestDisconnectAp
+     * @brief 前端请求断开连接
+     * @param devPath
+     */
+    void requestDisconnectAp(const QString &devPath) const;
+    /**
+     * @def requestConnection
+     * @brief 前端请求连接网络发送的信号
+     */
+    void requestConnectAp(const QString &devPath, const QString &apPath, const QString &uuid) const;
+    /**
+     * @def deleteConnection
+     * @brief 前端请求删除wifi的信号
+     * @param const QString uuid
+     */
+    void deleteConnection(const QString &uuid) const;
+
+public:
+    /**
+     * @brief onDeviceEnable
+     * @param path
+     * @param enabled
+     * @remark 给前端调用的接口，将数据发给后端
+     */
+    void onDeviceEnable(const QString &path, const bool enabled) const;
+    /**
+     * @def onActiveConnections
+     * @brief 活动的wifi的处理函数
+     * @param conns
+     */
+    void onActiveConnections(const QString &conns);
+
 };
 
 }   // namespace network

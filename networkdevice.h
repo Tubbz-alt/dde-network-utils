@@ -83,7 +83,17 @@ public:
 
 Q_SIGNALS:
     void removed() const;
+    /**
+     * @def statusChanged
+     * @brief 发送网络状态码
+     * @param (DeviceStatus stat)
+     */
     void statusChanged(DeviceStatus stat) const;
+    /**
+     * @def statusChanged
+     * @brief 发送状态
+     * @param statStr
+     */
     void statusChanged(const QString &statStr) const;
     void statusQueueChanged(const QQueue<DeviceStatus> &statusQueue) const;
     void enableChanged(const bool enabled) const;

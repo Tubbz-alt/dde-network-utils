@@ -49,7 +49,6 @@ public:
     inline bool hotspotEnabled() const { return !m_activeHotspotInfo.isEmpty(); }
     inline QJsonObject activeHotspotInfo() const { return m_activeHotspotInfo; }
     const QString activeHotspotUuid() const;
-    void WirelessListClear();
     const QList<QJsonObject> activeConnections() const;
     const QList<QJsonObject> activeConnectionsInfo() const;
     const QList<QJsonObject> activeVpnConnectionsInfo() const;
@@ -63,19 +62,26 @@ public:
 
     const QJsonArray apList() const;
     inline const QJsonObject activeApInfo() const { return m_activeApInfo; }
-    inline const QString activeApSsid() const { return m_activeApInfo.value("Ssid").toString(); }
-    inline const QString activeApPath() const { return m_activeApInfo.value("Path").toString(); }
-    inline int activeApStrength() const { return m_activeApInfo.value("Strength").toInt(); }
+    inline const QString activeApSsid() const { return m_activeApInfo.value("Id").toString(); }
+    inline const int activeApState() const {return m_activeApInfo.value("State").toInt();}
+//    inline const QString activeApPath() const { return m_activeApInfo.value("Path").toString(); }
+//    inline int activeApStrength() const { return m_activeApInfo.value("Strength").toInt(); }
     void updateWirlessAp();
-    void WirelessUpdate(const QJsonValue &WirelessData); //该接口给networkmodel使用
+    /**
+     * @def initWirelessData
+     * @brief 由于这些资源在打开关闭wifi页面的时候不会释放，所以需要让wifi列表重新加载才可以第一时间获取到wifi的数据信息
+     */
+    void initWirelessData();
+
+    void WirelessUpdate(const QJsonValue &WirelessList);
     
 Q_SIGNALS:
     void apAdded(const QJsonObject &apInfo) const;
     void apInfoChanged(const QJsonObject &apInfo) const;
     void apRemoved(const QJsonObject &apInfo) const;
     void activeApInfoChanged(const QJsonObject &activeApInfo) const;
-    void activeWirelessConnectionInfoChanged(const QJsonObject &connInfo) const;
-    void activeConnectionsChanged(const QList<QJsonObject> &activeConns) const;
+    //void activeWirelessConnectionInfoChanged(const QJsonObject &connInfo) const;
+    void activeConnectionsChanged(const QJsonObject &activeConns) const;
     void activeConnectionsInfoChanged(const QList<QJsonObject> &activeConnInfoList) const;
     void hotspotEnabledChanged(const bool enabled) const;
     void needSecrets(const QString &info);
@@ -85,13 +91,13 @@ Q_SIGNALS:
     void hostspotConnectionsChanged(const QList<QJsonObject> &connections) const;
 
 public Q_SLOTS:
-    void setAPList(const QString &apList);
+    //void setAPList(const QString &apList);
     void updateAPInfo(const QString &apInfo);
     void deleteAP(const QString &apInfo);
     void setActiveConnections(const QList<QJsonObject> &activeConns);
-    void setActiveConnectionsInfo(const QList<QJsonObject> &activeConnsInfo);
+//    void setActiveConnectionsInfo(const QList<QJsonObject> &activeConnsInfo);
     void setActiveHotspotInfo(const QJsonObject &hotspotInfo);
-    void setActiveApBySsid(const QString &ssid);
+//    void setActiveApBySsid(const QString &ssid);
     void setConnections(const QList<QJsonObject> &connections);
     void setHotspotConnections(const QList<QJsonObject> &hotspotConnections);
 

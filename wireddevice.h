@@ -45,12 +45,12 @@ public:
     const QList<QJsonObject> connections() const;
     void setConnections(const QList<QJsonObject> &connections);
     const QList<QJsonObject> activeConnections() const;
-    const QList<QJsonObject> activeConnectionsInfo() const;
+    //const QList<QJsonObject> activeConnectionsInfo() const;
     void setActiveConnections(const QList<QJsonObject> &activeConns);
     void setActiveConnectionsInfo(const QList<QJsonObject> &activeConnInfoList);
-    const QList<QJsonObject> activeVpnConnectionsInfo() const;
-    const QJsonObject activeWiredConnectionInfo() const;
-    const QString activeWiredConnName() const;
+    //const QList<QJsonObject> activeVpnConnectionsInfo() const;
+    const QJsonObject activeWiredConnectionData() const;
+    //const QString activeWiredConnName() const;
     const QString activeWiredConnUuid() const;
     const QString activeWiredConnSettingPath() const;
 
