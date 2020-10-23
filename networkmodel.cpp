@@ -304,80 +304,80 @@ void NetworkModel::onAirplaneModeEnableChanged(const bool enabled)
     }
 }
 
-void NetworkModel::onConnectionListChanged(const QString &conns)
-{
-    // m_connections 保存了所有从 NetworkManager 获取到的 connection
-    // m_connections 是一个以连接的类型为键(wired,wireless,vpn,pppoe,etc.), 以此类型的所有连接组成的 list 为值的 map
+//void NetworkModel::onConnectionListChanged(const QString &conns)
+//{
+//    // m_connections 保存了所有从 NetworkManager 获取到的 connection
+//    // m_connections 是一个以连接的类型为键(wired,wireless,vpn,pppoe,etc.), 以此类型的所有连接组成的 list 为值的 map
 
-    // commonConnections 的结构与 m_connection 一样, 但 commenConnection 只保存 "HwAddress" 属性为空的连接,
-    // 一个连接可以通过 "HwAddress" 属性 一对一的与设备关联起来, 因此:
-    // "HwAddress" 属性为空表示此连接所有设备都可以使用, 不为空则表示此连接只属于 "HwAddress" 指定的设备, 其他设备不应该拥有此连接
+//    // commonConnections 的结构与 m_connection 一样, 但 commenConnection 只保存 "HwAddress" 属性为空的连接,
+//    // 一个连接可以通过 "HwAddress" 属性 一对一的与设备关联起来, 因此:
+//    // "HwAddress" 属性为空表示此连接所有设备都可以使用, 不为空则表示此连接只属于 "HwAddress" 指定的设备, 其他设备不应该拥有此连接
 
-    // deviceConnections 是一个以连接的 "HwAddress" 属性为键, 以一个 map 为值的 map
-    // 其子 map 的结构也与 m_connection 相同
-    // 这表示 deviceConnections 中的一个键值对代表了一个设备, 及其独有的各种类型的连接
+//    // deviceConnections 是一个以连接的 "HwAddress" 属性为键, 以一个 map 为值的 map
+//    // 其子 map 的结构也与 m_connection 相同
+//    // 这表示 deviceConnections 中的一个键值对代表了一个设备, 及其独有的各种类型的连接
 
-    QMap< QString, QList< QJsonObject>> commonConnections;
-    QMap< QString, QMap< QString, QList< QJsonObject>>> deviceConnections;
+//    QMap< QString, QList< QJsonObject>> commonConnections;
+//    QMap< QString, QMap< QString, QList< QJsonObject>>> deviceConnections;
 
-    // 解析所有的 connection
-    const QJsonObject connsObject = QJsonDocument::fromJson(conns.toUtf8()).object();
-    for (auto it(connsObject.constBegin()); it != connsObject.constEnd(); ++it) {
-        const auto &connList = it.value().toArray();
-        const auto &connType = it.key();
-        if (connType.isEmpty())
-            continue;
+//    // 解析所有的 connection
+//    const QJsonObject connsObject = QJsonDocument::fromJson(conns.toUtf8()).object();
+//    for (auto it(connsObject.constBegin()); it != connsObject.constEnd(); ++it) {
+//        const auto &connList = it.value().toArray();
+//        const auto &connType = it.key();
+//        if (connType.isEmpty())
+//            continue;
 
-        m_connections[connType].clear();
+//        m_connections[connType].clear();
 
-        for (const auto &connObject : connList) {
-            const QJsonObject &connection = connObject.toObject();
+//        for (const auto &connObject : connList) {
+//            const QJsonObject &connection = connObject.toObject();
 
-            m_connections[connType].append(connection);
+//            m_connections[connType].append(connection);
 
-            const auto &hwAddr = connection.value("HwAddress").toString();
-            if (hwAddr.isEmpty()) {
-                commonConnections[connType].append(connection);
-            } else {
-                deviceConnections[hwAddr][connType].append(connection);
-            }
-        }
-    }
+//            const auto &hwAddr = connection.value("HwAddress").toString();
+//            if (hwAddr.isEmpty()) {
+//                commonConnections[connType].append(connection);
+//            } else {
+//                deviceConnections[hwAddr][connType].append(connection);
+//            }
+//        }
+//    }
 
-    // 将 connections 分配给具体的设备
-    for (NetworkDevice *dev : m_devices) {
-        const QString &hwAddr = dev->realHwAdr();
-        const QMap<QString, QList<QJsonObject>> &connsByType = deviceConnections.value(hwAddr);
-        QList<QJsonObject> destConns;
+//    // 将 connections 分配给具体的设备
+//    for (NetworkDevice *dev : m_devices) {
+//        const QString &hwAddr = dev->realHwAdr();
+//        const QMap<QString, QList<QJsonObject>> &connsByType = deviceConnections.value(hwAddr);
+//        QList<QJsonObject> destConns;
 
-        switch (dev->type()) {
-        case NetworkDevice::Wired: {
-            destConns += commonConnections.value("wired");
-            destConns += connsByType.value("wired");
-            WiredDevice *wdDevice = static_cast<WiredDevice *>(dev);
-            wdDevice->setConnections(destConns);
-            break;
-        }
-        case NetworkDevice::Wireless: {
-            destConns += commonConnections.value("wireless");
-            destConns += connsByType.value("wireless");
-            WirelessDevice *wsDevice = static_cast<WirelessDevice *>(dev);
-            qDebug() << "destConns" << destConns;
-            wsDevice->setConnections(destConns);
+//        switch (dev->type()) {
+//        case NetworkDevice::Wired: {
+//            destConns += commonConnections.value("wired");
+//            destConns += connsByType.value("wired");
+//            WiredDevice *wdDevice = static_cast<WiredDevice *>(dev);
+//            wdDevice->setConnections(destConns);
+//            break;
+//        }
+//        case NetworkDevice::Wireless: {
+//            destConns += commonConnections.value("wireless");
+//            destConns += connsByType.value("wireless");
+//            WirelessDevice *wsDevice = static_cast<WirelessDevice *>(dev);
+//            qDebug() << "destConns" << destConns;
+//            wsDevice->setConnections(destConns);
 
-            destConns.clear();
-            destConns += commonConnections.value("wireless-hotspot");
-            destConns += connsByType.value("wireless-hotspot");
-            wsDevice->setHotspotConnections(destConns);
-            break;
-        }
-        default:
-            break;
-        }
-    }
+//            destConns.clear();
+//            destConns += commonConnections.value("wireless-hotspot");
+//            destConns += connsByType.value("wireless-hotspot");
+//            wsDevice->setHotspotConnections(destConns);
+//            break;
+//        }
+//        default:
+//            break;
+//        }
+//    }
 
-    Q_EMIT connectionListChanged();
-}
+//    Q_EMIT connectionListChanged();
+//}
 
 void NetworkModel::onActiveConnInfoChanged(const QString &conns)
 {
@@ -643,6 +643,8 @@ void NetworkModel::onWiredDataChange(const QString &conns)
         }
 
     }
+    //这个信号是给DSL、VPN等使用的信号
+    Q_EMIT connectionListChanged();
 }
 
 void NetworkModel::onActiveConnections(const QString &conns)
@@ -650,7 +652,6 @@ void NetworkModel::onActiveConnections(const QString &conns)
     m_activeConns.clear();
     // 按照设备分类所有 active 连接
     QMap<QString, QList<QJsonObject>> deviceActiveConnsMap;
-
     const QJsonObject activeConns = QJsonDocument::fromJson(conns.toUtf8()).object();
     for (auto it = activeConns.constBegin(); it != activeConns.constEnd(); ++it)
     {

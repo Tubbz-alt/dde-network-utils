@@ -57,12 +57,12 @@ public:
 Q_SIGNALS:
     void connectionsChanged(const QList<QJsonObject> &connections) const;
     void activeWiredConnectionInfoChanged(const QJsonObject &connInfo) const;
-    void activeConnectionsChanged(const QList<QJsonObject> &activeConns) const;
+    void activeConnectionsChanged(const QJsonObject &activeConn) const;
     void activeConnectionsInfoChanged(const QList<QJsonObject> &activeConnInfoList) const;
 
 private:
     QList<QJsonObject> m_activeConnections;
-    QList<QJsonObject> m_activeConnectionsInfo;
+    //QList<QJsonObject> m_activeConnectionsInfo;
     QList<QJsonObject> m_connections;
 };
 

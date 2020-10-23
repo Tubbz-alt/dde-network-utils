@@ -44,24 +44,19 @@ NetworkWorker::NetworkWorker(NetworkModel *model, QObject *parent, bool sync)
 //    connect(&m_networkInter, &NetworkInter::ConnectionsChanged, m_networkModel, &NetworkModel::onConnectionListChanged);
 //    connect(&m_networkInter, &NetworkInter::DeviceEnabled, m_networkModel, &NetworkModel::onDeviceEnableChanged);
 //    connect(&m_networkInter, &NetworkInter::WirelessAccessPointsChanged, m_networkModel, &NetworkModel::WirelessAccessPointsChanged);
-//    connect(&m_networkInter, &NetworkInter::VpnEnabledChanged, m_networkModel, &NetworkModel::onVPNEnabledChanged);
+
 //    connect(m_networkModel, &NetworkModel::requestDeviceStatus, this, &NetworkWorker::queryDeviceStatus, Qt::QueuedConnection);
 //    connect(m_networkModel, &NetworkModel::deviceListChanged, this, [=]() {
 //        m_networkModel->onConnectionListChanged(m_networkInter.connections());
 //    }, Qt::QueuedConnection);
 
-//    connect(m_chainsInter, &ProxyChains::IPChanged, model, &NetworkModel::onChainsAddrChanged);
-//    connect(m_chainsInter, &ProxyChains::PasswordChanged, model, &NetworkModel::onChainsPasswdChanged);
-//    connect(m_chainsInter, &ProxyChains::TypeChanged, model, &NetworkModel::onChainsTypeChanged);
-//    connect(m_chainsInter, &ProxyChains::UserChanged, model, &NetworkModel::onChainsUserChanged);
-//    connect(m_chainsInter, &ProxyChains::PortChanged, model, &NetworkModel::onChainsPortChanged);
-
-//    m_networkInter.setSync(false);
-//    m_chainsInter->setSync(false);
 
 //    active(sync);
     //关联信号和槽
     initConnect();
+
+    m_networkInter.setSync(false);
+    m_chainsInter->setSync(false);
     //初始化网络操作
     active();
 
@@ -79,6 +74,8 @@ void NetworkWorker::initConnect()
     connect(&m_networkInter, &NetworkInter::ActiveConnectionsChanged, m_networkModel, &NetworkModel::onActiveConnections);
     //处理有线连接数据
     connect(&m_networkInter, &NetworkInter::ConnectionsChanged, m_networkModel, &NetworkModel::onWiredDataChange);
+    //处理VPN数据
+    connect(&m_networkInter, &NetworkInter::ConnectionsChanged, m_networkModel, &NetworkModel::onWiredDataChange);
     //处理无线连接的数据
     connect(&m_networkInter, &NetworkInter::WirelessAccessPointsChanged, m_networkModel, &NetworkModel::WirelessAccessPointsChanged);
     //刷新网络
@@ -91,8 +88,17 @@ void NetworkWorker::initConnect()
     connect(m_networkModel, &NetworkModel::requestConnectAp, this, &NetworkWorker::activateAccessPoint);
     //前端请求删除ap保存数据
     connect(m_networkModel, &NetworkModel::deleteConnection, this, &NetworkWorker::deleteConnection);
+    //VPN状态监听
+    connect(&m_networkInter, &NetworkInter::VpnEnabledChanged, m_networkModel, &NetworkModel::onVPNEnabledChanged);
 
-    //当前连接状态详细数据
+    //代理接口
+    connect(m_chainsInter, &ProxyChains::IPChanged, m_networkModel, &NetworkModel::onChainsAddrChanged);
+    connect(m_chainsInter, &ProxyChains::PasswordChanged, m_networkModel, &NetworkModel::onChainsPasswdChanged);
+    connect(m_chainsInter, &ProxyChains::TypeChanged, m_networkModel, &NetworkModel::onChainsTypeChanged);
+    connect(m_chainsInter, &ProxyChains::UserChanged, m_networkModel, &NetworkModel::onChainsUserChanged);
+    connect(m_chainsInter, &ProxyChains::PortChanged, m_networkModel, &NetworkModel::onChainsPortChanged);
+
+    //网络详情页状态数据
     connect(m_networkModel, &NetworkModel::requestActionConnect, this, &NetworkWorker::queryActiveConnInfo);
 }
 
