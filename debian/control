@@ -3,11 +3,11 @@ Section: libs
 Priority: optional
 Maintainer: listenerri <listenerri@gmail.com>
 Build-Depends:
- debhelper (>= 9),
+ debhelper (>= 11),
  libdframeworkdbus-dev (>= 1.0.2),
  pkg-config,
  qt5-qmake,
- qt5-default,
+ qtbase5-dev,
  libgsettings-qt-dev,
  qttools5-dev-tools
 Standards-Version: 3.9.8
@@ -16,13 +16,12 @@ Homepage: https://github.com/linuxdeepin/dde-network-utils
 Package: libdde-network-utils
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: DDE network utils
- DDE network utils.
+Description: this dde-network-utils main program
+ This section is useless, but it will not compile and report errors
 
 Package: libdde-network-utils-dev
 Architecture: any
 Section: libdevel
-Depends:
- libdde-network-utils, ${misc:Depends}
-Description: DDE network utils dev
- DDE network utils dev.
+Depends: libdde-network-utils, ${misc:Depends}
+Description: DDE network utils dev DDE network utils dev
+ This section is useless, but it will not compile and report errors
