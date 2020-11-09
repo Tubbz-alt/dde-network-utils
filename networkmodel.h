@@ -173,26 +173,6 @@ private:
     NetworkDevice *device(const QString &devPath) const;
     void updateWiredConnInfo();
 
-private:
-    NetworkDevice *m_lastSecretDevice;
-    ConnectivityChecker *m_connectivityChecker;
-    QThread *m_connectivityCheckThread;
-
-    bool m_vpnEnabled;
-    bool m_appProxyExist;
-
-    QString m_proxyMethod;
-    QString m_proxyIgnoreHosts;
-    QString m_autoProxy;
-    ProxyConfig m_chainsProxy;
-    QList<NetworkDevice *> m_devices;
-    QList<QJsonObject> m_activeConnInfos;
-    QList<QJsonObject> m_activeConns;
-    QMap<QString, ProxyConfig> m_proxies;
-    QMap<QString, QList<QJsonObject>> m_connections;
-
-    static Connectivity m_Connectivity;
-
 Q_SIGNALS:
     /**
      * @brief requestDeviceEnable
@@ -243,6 +223,27 @@ public:
      * @param conns
      */
     void onActiveConnections(const QString &conns);
+
+private:
+    NetworkDevice *m_lastSecretDevice;
+    ConnectivityChecker *m_connectivityChecker;
+    QThread *m_connectivityCheckThread;
+
+    bool m_vpnEnabled;
+    bool m_appProxyExist;
+
+    QString m_proxyMethod;
+    QString m_proxyIgnoreHosts;
+    QString m_autoProxy;
+    ProxyConfig m_chainsProxy;
+    QList<NetworkDevice *> m_devices;
+    QList<QJsonObject> m_activeConnInfos;
+    QList<QJsonObject> m_activeConns;
+    QMap<QString, ProxyConfig> m_proxies;
+    QMap<QString, QList<QJsonObject>> m_connections;
+
+    static Connectivity m_Connectivity;
+
 
 };
 

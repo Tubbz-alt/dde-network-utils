@@ -57,16 +57,13 @@ public:
     const QString activeWirelessConnUuid() const;
     const QString activeWirelessConnSettingPath() const;
 
-    const QList<QJsonObject> connections() const { return m_connections; }
     const QList<QJsonObject> hotspotConnections() const { return m_hotspotConnections; }
 
     const QJsonArray apList() const;
     inline const QJsonObject activeApInfo() const { return m_activeApInfo; }
-    inline const QString activeApSsid() const { return m_activeApInfo.value("Id").toString(); }
+    inline const QString activeApSsid() const { return m_activeApInfo.value("Id").toString();}
     inline const int activeApState() const {return m_activeApInfo.value("State").toInt();}
-//    inline const QString activeApPath() const { return m_activeApInfo.value("Path").toString(); }
-//    inline int activeApStrength() const { return m_activeApInfo.value("Strength").toInt(); }
-    void updateWirlessAp();
+    inline int activeApStrength() const { return m_activeApInfo.value("Strength").toInt(); }
     /**
      * @def initWirelessData
      * @brief 由于这些资源在打开关闭wifi页面的时候不会释放，所以需要让wifi列表重新加载才可以第一时间获取到wifi的数据信息
@@ -80,8 +77,7 @@ Q_SIGNALS:
     void apInfoChanged(const QJsonObject &apInfo) const;
     void apRemoved(const QJsonObject &apInfo) const;
     void activeApInfoChanged(const QJsonObject &activeApInfo) const;
-    //void activeWirelessConnectionInfoChanged(const QJsonObject &connInfo) const;
-    void activeConnectionsChanged(const QJsonObject &activeConns) const;
+    void activeConnectionsChanged(const QJsonObject &activeConnAp) const;
     void activeConnectionsInfoChanged(const QList<QJsonObject> &activeConnInfoList) const;
     void hotspotEnabledChanged(const bool enabled) const;
     void needSecrets(const QString &info);
@@ -91,18 +87,21 @@ Q_SIGNALS:
     void hostspotConnectionsChanged(const QList<QJsonObject> &connections) const;
 
 public Q_SLOTS:
-    //void setAPList(const QString &apList);
+    /**
+     * @def updateAPInfo
+     * @brief 添加和更新wifi数据
+     * @param apInfo
+     */
     void updateAPInfo(const QString &apInfo);
+    /**
+     * @def deleteAP
+     * @brief 删除已经消失的wifi
+     * @param apInfo
+     */
     void deleteAP(const QString &apInfo);
     void setActiveConnections(const QList<QJsonObject> &activeConns);
-//    void setActiveConnectionsInfo(const QList<QJsonObject> &activeConnsInfo);
+    void setActiveConnectionsInfo(const QList<QJsonObject> &activeConnsInfo);
     void setActiveHotspotInfo(const QJsonObject &hotspotInfo);
-//    void setActiveApBySsid(const QString &ssid);
-    void setConnections(const QList<QJsonObject> &connections);
-    void setHotspotConnections(const QList<QJsonObject> &hotspotConnections);
-
-private:
-    QString activeApSsidByActiveConnUuid(const QString &activeWirelessConnUuid);
 
 private:
     QList<QJsonObject> m_activeConnections;
@@ -110,11 +109,8 @@ private:
     QJsonObject m_activeApInfo;
     QJsonObject m_activeHotspotInfo;
     QMap<QString, QJsonObject> m_apsMap;
-    QList<QJsonObject> m_connections;
     QList<QJsonObject> m_hotspotConnections;
-    QMap<QString,QString> m_ssidDatas;
-
-    NetworkInter m_networkInter;
+    QMap<QString,QString> m_apDatas;
 };
 
 }

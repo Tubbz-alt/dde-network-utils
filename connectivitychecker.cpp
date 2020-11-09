@@ -26,6 +26,7 @@
 #include <QNetworkReply>
 #include <QScopedPointer>
 #include <QGSettings>
+#include <QTimer>
 
 static const QStringList CheckUrls {
     "https://www.baidu.com",
@@ -37,8 +38,16 @@ static const QStringList CheckUrls {
 
 using namespace dde::network;
 
-ConnectivityChecker::ConnectivityChecker(QObject *parent) : QObject(parent)
+ConnectivityChecker::ConnectivityChecker(QObject *parent)
+    : QObject(parent)
+    , m_updateTimer(new QTimer(this))
 {
+    //五分钟刷新一次当前网络联通状态
+    m_updateTimer->setInterval(1000 * 5 * 60);
+    m_updateTimer->setSingleShot(false);
+    connect(m_updateTimer, &QTimer::timeout, this, &ConnectivityChecker::startCheck);
+    m_updateTimer->start();
+
     m_settings = new QGSettings("com.deepin.dde.network-utils","/com/deepin/dde/network-utils/");
     m_checkUrls = m_settings->get("network-checker-urls").toStringList();
     connect(m_settings,&QGSettings::changed,[=](const QString key) {

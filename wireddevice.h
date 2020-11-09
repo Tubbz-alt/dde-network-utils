@@ -45,24 +45,28 @@ public:
     const QList<QJsonObject> connections() const;
     void setConnections(const QList<QJsonObject> &connections);
     const QList<QJsonObject> activeConnections() const;
-    //const QList<QJsonObject> activeConnectionsInfo() const;
     void setActiveConnections(const QList<QJsonObject> &activeConns);
     void setActiveConnectionsInfo(const QList<QJsonObject> &activeConnInfoList);
-    //const QList<QJsonObject> activeVpnConnectionsInfo() const;
+    const QJsonObject activeWiredConnectionInfo() const;
     const QJsonObject activeWiredConnectionData() const;
-    //const QString activeWiredConnName() const;
     const QString activeWiredConnUuid() const;
     const QString activeWiredConnSettingPath() const;
 
 Q_SIGNALS:
     void connectionsChanged(const QList<QJsonObject> &connections) const;
-    void activeWiredConnectionInfoChanged(const QJsonObject &connInfo) const;
     void activeConnectionsChanged(const QJsonObject &activeConn) const;
-    void activeConnectionsInfoChanged(const QList<QJsonObject> &activeConnInfoList) const;
 
 private:
+    /**
+     * @brief m_activeConnections
+     * @remark 网络的正常连接数据
+     */
     QList<QJsonObject> m_activeConnections;
-    //QList<QJsonObject> m_activeConnectionsInfo;
+    /**
+     * @brief m_activeConnectionsInfo
+     * @remark 网络的详细数据，负责一展示页面使用
+     */
+    QList<QJsonObject> m_activeConnectionsInfo;
     QList<QJsonObject> m_connections;
 };
 

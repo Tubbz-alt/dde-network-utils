@@ -26,6 +26,7 @@
 #include <QStringList>
 
 class QGSettings;
+class QTimer;
 
 namespace dde {
 
@@ -48,6 +49,7 @@ public Q_SLOTS:
 private:
     QGSettings* m_settings;
     QStringList m_checkUrls;
+    QTimer *m_updateTimer;
 
 };
 

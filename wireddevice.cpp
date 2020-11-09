@@ -52,36 +52,16 @@ const QList<QJsonObject> WiredDevice::activeConnections() const
     return m_activeConnections;
 }
 
-//const QList<QJsonObject> WiredDevice::activeConnectionsInfo() const
-//{
-//    return m_activeConnectionsInfo;
-//}
-
 void WiredDevice::setActiveConnections(const QList<QJsonObject> &activeConns)
 {
     m_activeConnections = activeConns;
     Q_EMIT activeConnectionsChanged(activeWiredConnectionData());
 }
 
-//void WiredDevice::setActiveConnectionsInfo(const QList<QJsonObject> &activeConnInfoList)
-//{
-//    m_activeConnectionsInfo = activeConnInfoList;
-
-//    Q_EMIT activeWiredConnectionInfoChanged(activeWiredConnectionData());
-//    Q_EMIT activeConnectionsInfoChanged(m_activeConnectionsInfo);
-//}
-
-//const QList<QJsonObject> WiredDevice::activeVpnConnectionsInfo() const
-//{
-//    QList<QJsonObject> activeVpns;
-//    for (const QJsonObject &activeConn : m_activeConnectionsInfo) {
-//        if (activeConn.value("ConnectionType").toString().startsWith("vpn-")) {
-//            activeVpns.append(activeConn);
-//        }
-//    }
-
-//    return activeVpns;
-//}
+void WiredDevice::setActiveConnectionsInfo(const QList<QJsonObject> &activeConnInfoList)
+{
+    m_activeConnectionsInfo = activeConnInfoList;
+}
 
 const QJsonObject WiredDevice::activeWiredConnectionData() const
 {
@@ -94,11 +74,18 @@ const QJsonObject WiredDevice::activeWiredConnectionData() const
     return activeWired;
 }
 
-//const QString WiredDevice::activeWiredConnName() const
-//{
-//    const QJsonObject &conn = activeWiredConnectionInfo();
-//    return conn.isEmpty() ? QString() : conn.value("ConnectionName").toString();
-//}
+const QJsonObject WiredDevice::activeWiredConnectionInfo() const
+{
+    QJsonObject activeWired;
+    for (const QJsonObject &activeConn : m_activeConnectionsInfo) {
+        if (activeConn.value("ConnectionType").toString() == "wired") {
+            activeWired = activeConn;
+            break;
+        }
+    }
+
+    return activeWired;
+}
 
 const QString WiredDevice::activeWiredConnUuid() const
 {

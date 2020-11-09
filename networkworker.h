@@ -49,7 +49,11 @@ class NetworkWorker : public QObject
 
 public:
     explicit NetworkWorker(NetworkModel *model, QObject *parent = nullptr, bool sync = false);
-
+    /**
+     * @def active
+     * @brief 初始化数据
+     * @param bSync
+     */
     void active(bool bSync = false);
     void deactive();
 private:
@@ -58,12 +62,24 @@ private:
 public Q_SLOTS:
     void activateConnection(const QString &devPath, const QString &uuid);
     void activateAccessPoint(const QString &devPath, const QString &apPath, const QString &uuid);
-    void createApConfig(const QString &devPath, const QString &apPath);
-    void createConnection(const QString &type, const QString &devPath);
     void deleteConnection(const QString &uuid);
+    /**
+     * @def deactiveConnection
+     * @brief 断开连接
+     * @param uuid
+     */
     void deactiveConnection(const QString &uuid);
+    /**
+     * @def disconnectDevice
+     * @brief 适配器层面断开连接，目前使用这个较多
+     * @param devPath
+     */
     void disconnectDevice(const QString &devPath);
-    void initWirelessHotspot(const QString &devPath);
+    /**
+     * @def requestWirelessScan
+     * @brief 刷新wifi数据，这个操作会更新wirelessAccessPoints属性，会有些时间损耗，
+     *  大约得到数据的时间为：5秒左右，数据也不是很全，所以在刷新操作之前，都是基于前端目前有数据的情况下
+     */
     void requestWirelessScan();
     void queryChains();
     void queryAutoProxy();
@@ -72,29 +88,64 @@ public Q_SLOTS:
     void queryProxyIgnoreHosts();
     void queryActiveConnInfo();
     void queryProxy(const QString &type);
-    //void queryAccessPoints(const QString &devPath);
-    void queryConnectionSession(const QString &devPath, const QString &uuid);
+    /**
+     * @def  queryDeviceStatus
+     * @brief 网络详情页使用的，重新获取一下适配器状态
+     * @param devPath
+     */
     void queryDeviceStatus(const QString &devPath);
+    /**
+     * @def remanageDevice
+     * @brief 热点相关内容
+     * @param devPath
+     */
     void remanageDevice(const QString &devPath);
+    /**
+     * @def setVpnEnable
+     * @brief 设置热点开关
+     * @param enable
+     */
     void setVpnEnable(const bool enable);
+    /**
+     * @def  setDeviceEnable
+     * @brief  设置网络适配器开关
+     * @param devPath
+     * @param enable
+     */
     void setDeviceEnable(const QString &devPath, const bool enable);
+    /**
+     * @def setProxyMethod
+     * @brief 设置代理
+     * @param proxyMethod
+     */
     void setProxyMethod(const QString &proxyMethod);
     void setProxyIgnoreHosts(const QString &hosts);
     void setAutoProxy(const QString &proxy);
     void setProxy(const QString &type, const QString &addr, const QString &port);
     void setChainsProxy(const ProxyConfig &config);
     void onChainsTypeChanged(const QString &type);
-    void feedSecret(const QString &connectionPath, const QString &settingName, const QString &password, const bool autoConnect);
-    void cancelSecret(const QString &connectionPath, const QString &settingName);
 
 private Q_SLOTS:
+    /**
+     * @def activateAccessPointCB
+     * @brief 连接返回给Networkmodel的处理函数 callBack
+     * @param w
+     */
     void activateAccessPointCB(QDBusPendingCallWatcher *w);
+    /**
+     * @def queryAutoProxyCB
+     * @brief 设置代理的处理函数 callback
+     * @param w
+     */
     void queryAutoProxyCB(QDBusPendingCallWatcher *w);
     void queryProxyCB(QDBusPendingCallWatcher *w);
+    /**
+     * @def queryProxyMethodCB
+     * @brief  设置代理
+     * @param w
+     */
     void queryProxyMethodCB(QDBusPendingCallWatcher *w);
     void queryProxyIgnoreHostsCB(QDBusPendingCallWatcher *w);
-    //void queryAccessPointsCB(QDBusPendingCallWatcher *w);
-    void queryConnectionSessionCB(QDBusPendingCallWatcher *w);
     void queryDeviceStatusCB(QDBusPendingCallWatcher *w);
     void queryActiveConnInfoCB(QDBusPendingCallWatcher *w);
 
