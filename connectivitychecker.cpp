@@ -81,8 +81,8 @@ void ConnectivityChecker::startCheck()
 
         reply->close();
         if (reply->error() == QNetworkReply::NoError &&
-           (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200 ||
-            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 204)) {
+           (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() >= 200 ||
+            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() <= 207)) {
             qDebug() << "Connected to url:" << url;
             Q_EMIT checkFinished(true);
             return;
