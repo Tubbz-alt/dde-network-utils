@@ -360,7 +360,7 @@ void NetworkModel::onConnectionSessionCreated(const QString &device, const QStri
 
 void NetworkModel::onDeviceEnableChanged(const QString &device, const bool enabled)
 {
-    qDebug() << Q_FUNC_INFO;
+    qDebug() << Q_FUNC_INFO << enabled;
     NetworkDevice *dev = nullptr;
     for (auto const d : m_devices)
     {

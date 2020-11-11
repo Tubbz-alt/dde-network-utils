@@ -208,6 +208,12 @@ Q_SIGNALS:
      * @param const QString uuid
      */
     void deleteConnection(const QString &uuid) const;
+    /**
+     * @def initDeviceEnable
+     * @brief 初始化开关
+     * @param path
+     */
+    void initDeviceEnable(const QString &devpath) const;
 
 public:
     /**

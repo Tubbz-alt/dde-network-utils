@@ -63,6 +63,8 @@ void NetworkWorker::initConnect()
     connect(&m_networkInter, &NetworkInter::ConnectionsChanged, m_networkModel, &NetworkModel::onWiredDataChange);
     //处理无线连接的数据
     connect(&m_networkInter, &NetworkInter::WirelessAccessPointsChanged, m_networkModel, &NetworkModel::WirelessAccessPointsChanged);
+    //前端请求刷新适配器开关
+    connect(m_networkModel, &NetworkModel::initDeviceEnable, this, &NetworkWorker::queryDeviceStatus);
     //刷新网络
     connect(m_networkModel, &NetworkModel::updateApList, this, &NetworkWorker::requestWirelessScan);
     //适配器状态前端请求改变
@@ -105,7 +107,6 @@ void NetworkWorker::active(bool bSync)
     //初始化vpn是否打开
     m_networkModel->onVPNEnabledChanged(m_networkInter.vpnEnabled());
 
-
 }
 
 void NetworkWorker::deactive()
@@ -120,6 +121,7 @@ void NetworkWorker::setVpnEnable(const bool enable)
 
 void NetworkWorker::setDeviceEnable(const QString &devPath, const bool enable)
 {
+    qDebug() << Q_FUNC_INFO << enable;
     m_networkInter.EnableDevice(QDBusObjectPath(devPath), enable);
 }
 
@@ -329,7 +331,6 @@ void NetworkWorker::queryProxyIgnoreHostsCB(QDBusPendingCallWatcher *w)
 void NetworkWorker::queryDeviceStatusCB(QDBusPendingCallWatcher *w)
 {
     QDBusPendingReply<bool> reply = *w;
-
     m_networkModel->onDeviceEnableChanged(w->property("devPath").toString(), reply.value());
 
     w->deleteLater();
