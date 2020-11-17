@@ -106,6 +106,8 @@ void NetworkWorker::active(bool bSync)
     m_networkModel->onAirplaneModeEnableChanged(m_airplaneMode.wifiEnabled());
     //初始化vpn是否打开
     m_networkModel->onVPNEnabledChanged(m_networkInter.vpnEnabled());
+    //初始化详情数据，防止dock的悬浮框在重启之后为空的状态
+    queryActiveConnInfo();
 
 }
 

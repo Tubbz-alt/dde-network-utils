@@ -95,7 +95,7 @@ public Q_SLOTS:
     void updateAPInfo(const QString &apInfo);
     /**
      * @def deleteAP
-     * @brief 删除已经消失的wifi
+     * @brief 删除ap,主要以删除有线网为主
      * @param apInfo
      */
     void deleteAP(const QString &apInfo);
